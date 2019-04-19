@@ -1,0 +1,102 @@
+
+
+> microTSS-CAGE is starting with a job id H1_CNhs14067.13523.
+
+	Input info:
+		Number of replicates - 1
+		CAGE file(s) - /home/nikos/biothesis/georgaki/workspace/dev/input_data/CAGE_DATA/H1/sorted_chromOnly_CAGE_H1_embryonic_stem_cells_differentiation_CD_HSC_day00_biol_rep1.CNhs14067.13523-145F4.hg38.nobarcode.bam.sam
+		hg38 genome file - /home/nikos/biothesis/GENOME/hg38.fa
+	Requested options:
+		Species - hg38
+		Cage MQ - 10
+		Number of processes - 1
+		Gap size - 50
+		Min cluster TPM - 0.5
+		Max cluster size (bp) - 1000
+		#EM itterations - 50
+		SVM score threshold - 0.5
+	Results will be placed in /home/nikos/biothesis/georgaki/workspace/dev/CAGE/data/human/hg38/job_H1_CNhs14067.13523
+
+	Initiating module for converting CAGE tags from sam to bed format.
+		Finished in 2.25 minutes.
+	Initiating module for finding CAGE CTSSs.
+			Working on chr1.
+			Working on chr10.
+			Working on chr11.
+			Working on chr12.
+			Working on chr13.
+			Working on chr14.
+			Working on chr15.
+			Working on chr16.
+			Working on chr17.
+			Working on chr18.
+			Working on chr19.
+			Working on chr2.
+			Working on chr20.
+			Working on chr21.
+			Working on chr22.
+			Working on chr3.
+			Working on chr4.
+			Working on chr5.
+			Working on chr6.
+			Working on chr7.
+			Working on chr8.
+			Working on chr9.
+			Working on chrX.
+			Working on chrY.
+		Finished in 0.433333333333333 minutes.
+	Initiating module for calling CAGE tag clusters.
+			Working on chr1.
+			Working on chr10.
+			Working on chr11.
+			Working on chr12.
+			Working on chr13.
+			Working on chr14.
+			Working on chr15.
+			Working on chr16.
+			Working on chr17.
+			Working on chr18.
+			Working on chr19.
+			Working on chr2.
+			Working on chr20.
+			Working on chr21.
+			Working on chr22.
+			Working on chr3.
+			Working on chr4.
+			Working on chr5.
+			Working on chr6.
+			Working on chr7.
+			Working on chr8.
+			Working on chr9.
+			Working on chrX.
+			Working on chrY.
+		Finished in 0.566666666666667 minutes.
+	Getting the sequence around CAGE tag cluster representatives.
+		Finished in 0.616666666666667 minutes.
+	Initiating sequence feature extraction and CAGE tag cluster scoring module (phase 1 - step 1).
+			Working with stacking_energy.
+			Working with z_dna.
+			Working with protein_deformation.
+			Working with bendability.
+			Working with protein_dna_twist.
+			Working with a_philicity.
+			Working with duplex_disrupt_energy.
+			Working with dna_bending_stiffness.
+			Working with propeller_twist.
+			Working with duplex_free_energy.
+			Working with b_dna_twist.
+			Working with nucleosome_position.
+			Working with denaturation.
+		Finished in 309.3 minutes.
+	Merging sequence feature scores (phase 1 - step 2).
+Loading required package: plyr
+		Finished in 0.416666666666667 minutes.
+	Initiating Pol2-associated motif affinity scanning module (phase 2).
+Loading required package: plyr
+		Finished in 1.01666666666667 minutes.
+	Initiating final CAGE tag cluster scoring module (phase 3).
+phase_3.1.
+1 at CAGE.pl line 207.
+phase_3.2.
+Loading required package: plyr
+		Finished in 0.166666666666667 minutes.

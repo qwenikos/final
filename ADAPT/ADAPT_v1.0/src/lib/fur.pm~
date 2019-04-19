@@ -1,0 +1,420 @@
+#################################################################################################
+#################################################################################################
+##
+##	Copyright (c) DIANA Lab, University of Thessaly, Department of Electrical and Computer Engineering, Greece
+##
+##	Author:	George Georgakilas
+##			georgakilas@uth.gr
+##
+##	microTSS v1.0 - library of frequently used routines
+##
+##	Library containing frequently used routines by microTSS
+##
+#################################################################################################
+#################################################################################################
+
+use strict;
+use PerlIO::gzip;
+use Set::IntervalTree;
+
+###################### Routine for reading and shifting ChIP-seq reads ######################
+sub read_chip_reads {
+	my ($file,$chr,$shiftSize) = @_;
+
+	#create an interval tree object to load all reads of $chr
+	my $tree = Set::IntervalTree->new;
+	my $count=0;
+	my $check=0;
+
+	if($file=~/gz/){
+		open(IN,"<:gzip",$file) or die "Cannot open $file. Error: $file $!.\n";
+	}
+	else{
+		open(IN,$file) or die "Cannot open $file. Error: $file $!.\n";
+	}
+	while(my $line=<IN>){
+		chomp $line;
+	
+		my @temp=split(/\t/, $line);
+
+		#shift the reads according to user defined shift size
+		if($temp[5] eq "+"){
+			$temp[1]+=$shiftSize;
+			$temp[2]+=$shiftSize;
+		}
+		elsif($temp[5] eq "-"){
+			$temp[1]-=$shiftSize;
+			$temp[2]-=$shiftSize;
+		}
+
+		$count++;
+		#load $chr reads into the interval tree object
+		if($temp[0] eq $chr){
+
+			$tree->insert($temp[3],$temp[1],$temp[2]);
+			$check=1;
+		}
+	}
+	close IN;
+
+	#die if the $file did not contain any reads for $chr
+	unless($check == 1){ die "\t\t>>$file did not contain any reads for $chr\n"; }
+
+	return $tree,$count;
+}
+##########################################################################
+
+################### Routine for reading RNA-seq SE reads unstranded ########################
+sub read_rnaseq_reads {
+
+	my ($dir,$chr,$mode) = @_;
+
+	#die if the $file did not contain any reads for $chr
+	unless(-e "$dir/$chr.bed.gz" or -e "$dir/$chr.bed"){ die "\t\t>$dir did not contain any files for $chr\n"; }
+	
+	#create an interval tree object to load all reads of $chr
+	my ($tree_plus,$tree_minus,$tree);
+	if($mode eq "stranded_FR" or $mode eq "stranded_RF"){
+		$tree_plus = Set::IntervalTree->new;
+		$tree_minus = Set::IntervalTree->new;
+		
+		my %mates;
+
+		if(-e "$dir/$chr.bed.gz"){
+			open(IN,"<:gzip","$dir/$chr.bed.gz") or die "Cannot open $dir/$chr.bed.gz: $!.\n";
+		}
+		else{
+			open(IN,"$dir/$chr.bed") or die "Cannot open $dir/$chr.bed: $!.\n";
+		}
+		while(my $line=<IN>){
+			chomp $line;
+	
+			my @temp=split(/\t/, $line);
+			$temp[3]=~/(.+)_(\d)/;
+
+			if($mode eq "stranded_FR" and $2==0){
+				$mates{$1}="$temp[5]_$temp[0]";
+			}
+			elsif($mode eq "stranded_RF" and $2==1){
+				$mates{$1}="$temp[5]_$temp[0]";
+			}
+			else{
+				next;
+			}
+		}
+		close IN;
+
+		if(-e "$dir/$chr.bed.gz"){
+			open(IN,"<:gzip","$dir/$chr.bed.gz") or die "Cannot open $dir/$chr.bed.gz: $!.\n";
+		}
+		else{
+			open(IN,"$dir/$chr.bed") or die "Cannot open $dir/$chr.bed: $!.\n";
+		}
+		while(my $line=<IN>){
+			chomp $line;
+	
+			my @temp=split(/\t/, $line);
+			$temp[3]=~/(.+)_(\d)/;
+			$mates{$1}=~/(.+)_(.+)/;
+
+			if($temp[0] eq $2 and $1 eq "+"){
+				$tree_plus->insert($line,$temp[1],$temp[2]);
+			}
+			elsif($temp[0] eq $2 and $1 eq "-"){
+				$tree_minus->insert($line,$temp[1],$temp[2]);
+			}
+			else{
+				next;
+			}
+		}
+		close IN;
+	}
+	elsif($mode eq "unstranded"){
+		$tree = Set::IntervalTree->new;
+
+		if(-e "$dir/$chr.bed.gz"){
+			open(IN,"<:gzip","$dir/$chr.bed.gz") or die "Cannot open $dir/$chr.bed.gz: $!.\n";
+		}
+		else{
+			open(IN,"$dir/$chr.bed") or die "Cannot open $dir/$chr.bed: $!.\n";
+		}
+		while(my $line=<IN>){
+			chomp $line;
+	
+			my @temp=split(/\t/, $line);
+			$tree->insert($line,$temp[1],$temp[2]);
+		}
+		close IN;
+	}
+# 	elsif($mode eq "stranded_GRO"){
+# 		$tree_plus = Set::IntervalTree->new;
+# 		$tree_minus = Set::IntervalTree->new;
+# 
+# 		if(-e "$dir/$chr.bed.gz"){
+# 			open(IN,"<:gzip","$dir/$chr.bed.gz") or die "Cannot open $dir/$chr.bed.gz: $!.\n";
+# 		}
+# 		else{
+# 			open(IN,"$dir/$chr.bed") or die "Cannot open $dir/$chr.bed: $!.\n";
+# 		}
+# 		while(my $line=<IN>){
+# 			chomp $line;
+# 	
+# 			my @temp=split(/\t/, $line);
+# 
+# 			if($temp[0] eq $chr and $temp[5] eq "+"){
+# 				$tree_plus->insert($line,$temp[1],$temp[2]);
+# 			}
+# 			elsif($temp[0] eq $chr and $temp[5] eq "-"){
+# 				$tree_minus->insert($line,$temp[1],$temp[2]);
+# 			}
+# 			else{
+# 				next;
+# 			}
+# 		}
+# 		close IN;
+# 	}
+	else{
+		die "\t\t\tInvalid strand mode: $mode\n";
+	}
+
+	if($mode eq "stranded_FR" or $mode eq "stranded_RF" or $mode eq "stranded_GRO"){
+		return ($tree_plus,$tree_minus);
+	}
+	elsif($mode eq "unstranded"){
+		return $tree;
+	}
+}
+##########################################################################
+
+###################### Routine for reading a list with intervals unstranded #####################
+sub read_regions {
+
+	my $file=$_[0];
+
+	my %regions;
+
+	if($file=~/gz/){
+		open(IN,"<:gzip",$file) or die "Cannot open $file. Error: $file $!.\n";
+	}
+	else{
+		open(IN,$file) or die "Cannot open $file. Error: $file $!.\n";
+	}
+	while(my $line=<IN>){
+		chomp $line;
+		
+		my @temp=split(/\t/, $line);
+		
+		# chr => array reference of the line
+		push @{$regions{$temp[0]}},\@temp;
+	}
+	close IN;
+
+	foreach my $chr (keys %regions){
+		@{$regions{$chr}} = sort { $$a[1] <=> $$b[1] } @{$regions{$chr}};
+	}
+
+	return %regions;
+}
+###########################################################################
+
+############ Routine for reading a list with intervals as an interval tree object unstranded ################
+sub read_regions_asIT {
+
+	my ($chr,$file)=@_;
+
+	#create an interval tree object to load all reads of $chr
+	my $tree = Set::IntervalTree->new;
+
+	if($file=~/gz/){
+		open(IN,"<:gzip",$file) or die "Cannot open $file. Error: $file $!.\n";
+	}
+	else{
+		open(IN,$file) or die "Cannot open $file. Error: $file $!.\n";
+	}
+	while(my $line=<IN>){
+		chomp $line;
+		
+		my @temp=split(/\t/, $line);
+
+		#load $chr regions into the interval tree object
+		if($temp[0] eq $chr){
+			my $id = join("\t",@temp);
+			$tree->insert($id,$temp[1],$temp[2]);
+		}
+	}
+	close IN;
+
+	return $tree;
+}
+###########################################################################
+
+########################## Routine implementing binary search ##########################
+sub binary {
+
+	my ($array_ref,$value) = @_;
+
+	my $min=0;
+	my $max=$#{$array_ref};
+	my $mid=0;
+
+	do{
+		$mid=int(($min+$max)/2);
+		if($value>${${$array_ref}[$mid]}[2]){
+			$min=$mid;
+		}
+		else{
+			$max=$mid;
+		}
+	}until($max-$min <= 2);
+
+	if($min-100 <=0){
+		return 0;
+	}
+	else{
+		return $min-100;
+	}
+}
+###########################################################################
+
+########### Routine for finding intergenic/intragenic elements from a list unstranded ####################
+sub find_intergenic {
+
+	my ($list,$file) = @_;
+
+	my (%inter,%intra);
+
+	foreach my $chr (keys %$list){
+		my $regions = read_regions_asIT($chr,$file);
+		for(my $i=0;$i<@{$$list{$chr}};$i++){
+			
+			my $start=${${$$list{$chr}}[$i]}[1];
+			my $stop=${${$$list{$chr}}[$i]}[2];
+
+			my $list_of_overlapping_regions=search_interval_tree($start,$stop,\$regions);
+
+			if(scalar(@$list_of_overlapping_regions)==0){
+				push @{$inter{$chr}},${$$list{$chr}}[$i];
+			}
+			else{
+				push @{$intra{$chr}},${$$list{$chr}}[$i];
+			}
+		}
+	}
+
+	return \%inter,\%intra;
+}
+############################################################################
+
+######################### Routine searching the interval tree #############################
+sub search_interval_tree {
+
+	my ($left,$right,$blocks) = @_;
+
+	my $result = $$blocks->fetch($left,$right);
+
+	return $result;
+}
+############################################################################
+
+############ Routing for finding the distance of an intergenic region from its flanking genes ################
+sub find_distance_from_flanking_genes {
+
+	my ($regionStart,$regionStop,$chr,$genes)=@_;
+
+	my $outLeft=0;
+	my $outRight=0;
+	my $closestIndex=binary(\@{$$genes{$chr}},$regionStart);
+	for(my $i=$closestIndex;$i<=$#{$$genes{$chr}}-1;$i++){
+		
+		my $curStart=${${$$genes{$chr}}[$i]}[1];
+		my $curStop=${${$$genes{$chr}}[$i]}[2];
+
+		my $nextStart=${${$$genes{$chr}}[$i+1]}[1];
+		my $nextStop=${${$$genes{$chr}}[$i+1]}[2];
+
+		unless($curStop<$regionStart or $curStart>$regionStop){
+			die "\t\t>>$regionStart|$regionStop was found to overlap with $curStart|$curStop. Please check!\n";
+		}
+		unless($nextStop<$regionStart or $nextStart>$regionStop){
+			die "\t\t>>$regionStart|$regionStop was found to overlap with $nextStart|$nextStop. Please check!\n";
+		}
+		
+		if($curStart>$regionStop and $i==0){
+			$outLeft=2000000;
+			$outRight=$curStart-$regionStop-100;
+			last;
+		}
+		
+		if($regionStart>$nextStop and $i==$#{$$genes{$chr}}-1){
+			$outLeft=$regionStart-$nextStop-100;
+			$outRight=2000000;
+			last;
+		}
+
+		if($curStop<$regionStart and $nextStart>$regionStop){
+			my $left=$regionStart-$curStop-100;
+			my $right=$nextStart-$regionStop-100;
+			
+			if($regionStart-$curStop <= 0){
+				die "\t\t>>Found left flanking region <=0. Please check!\n
+					\t\t\t$regionStart\t$regionStop\n
+					\t\t\t$curStart\t$curStop\n";
+			}
+			if($nextStart-$regionStop <= 0){
+				die "\t\t>>Found right flanking region <=0. Please check!\n
+					\t\t\t$regionStart\t$regionStop\n
+					\t\t\t$nextStart\t$nextStop\n";
+			}
+
+			if($left<=0){
+				$left=0;
+			}
+
+			if($right<=0){
+				$right=0;
+			}
+
+			$outLeft=$left;
+			$outRight=$right;
+			last;
+		}
+	}
+
+	return $outLeft,$outRight;
+}
+############################################################################
+
+############ Routing for finding intervals to be scanned with a sliding window unstranded #################
+sub find_intervals_for_scanning {
+
+	my ($start,$stop,$strand,$chr,$regions,$upstream)=@_;
+
+	my ($leftDist,$rightDist)=find_distance_from_flanking_genes($start,$stop,$chr,$regions);
+
+	if(($leftDist==0 and $rightDist==0) or ($leftDist==0 and $strand eq "+") or ($rightDist==0 and $strand eq "-")){
+		return 0,0;
+	}
+	else{
+		if($strand eq "+"){
+
+			$rightDist=0;
+
+			if($leftDist>$upstream){
+				$leftDist=$upstream;
+			}
+		}
+		elsif($strand eq "-"){
+
+			$leftDist=0;
+
+			if($rightDist>$upstream){
+				$rightDist=$upstream;
+			}
+		}
+	}
+
+	return $leftDist,$rightDist;
+}
+############################################################################
+
+1;

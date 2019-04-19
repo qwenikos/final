@@ -1,0 +1,1 @@
+perl CAGE.pl --species=hg38 --cage_file=example/Esophageal_pithelial_Cells_donor2.CNhs12083.11587-120G3.hg19.nobarcode.sam --genome_file=GENOME/hg38.fa --result_directory_id=test_ADAPT_01 &>out
